@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <style name="Widget.Leanback.SearchOrbViewStyle">
+        <item name="searchOrbIcon">@drawable/history</item>
+    </style>
+
+</resources>
