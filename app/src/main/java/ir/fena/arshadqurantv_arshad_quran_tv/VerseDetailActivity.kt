@@ -42,8 +42,8 @@ class VerseDetailActivity : FragmentActivity() {
     private var mediaPlayer: MediaPlayer? = null
     private var currentQari = "af"
     private val qariList = listOf("sh", "af", "pa", "mi")
-    private val qariNames = listOf("شاطری", "عفاسی", "پرهیزگار", "منشاوی")
-    private val qariEmojis = listOf("🎙️", "🎤", "🎧", "🎵")
+    private val qariNames = listOf("?????", "?????", "????????", "??????")
+    private val qariEmojis = listOf("??", "?", "?", "?")
     private var isPlayingAudio = false
     private var currentTheme = 5
     private var translationEnabled = true
@@ -59,29 +59,31 @@ class VerseDetailActivity : FragmentActivity() {
     private val speedOptions = floatArrayOf(0.25f, 0.5f, 0.75f, 1.0f, 1.25f, 1.5f, 1.75f, 2.0f)
     private val speedLabels = arrayOf("0.25x", "0.5x", "0.75x", "1x", "1.25x", "1.5x", "1.75x", "2x")
 
-    // شناسه نسل درخواست پخش: هر بار playAudio()/stopAudio() صدا زده شود این مقدار عوض می‌شود
-    // تا کال‌بک‌های دانلود/پخشِ معلقِ مربوط به آیه‌ی قبلی، به‌اشتباه روی آیه‌ی جدید اجرا نشوند
-    // (خودترمیمی در برابر رَیس‌کاندیشن هنگام دانلود/پخش صدا)
+    // جلوگیری از تداخل پخش/توقف صدا
     private var playRequestId = 0
 
-    // مدیریت ویدیو
+    // مدیریت همزمانی دانلود
+    private val downloadLocks = mutableMapOf<String, Any>()
+    private val lock = Any()
+
+    // ویدیوهای پس‌زمینه
     private lateinit var videoBackground: VideoView
     private val videoResources = listOf(
         R.raw.bg1, R.raw.bg2, R.raw.bg3, R.raw.bg4, R.raw.bg5, R.raw.bg6,
         R.raw.bg7, R.raw.bg8, R.raw.bg9, R.raw.bg10, R.raw.bg11, R.raw.bg12,
-        R.raw.bg13, R.raw.bg14, R.raw.bg15, R.raw.bg16, R.raw.bg17,R.raw.bg18,
+        R.raw.bg13, R.raw.bg14, R.raw.bg15, R.raw.bg16, R.raw.bg17, R.raw.bg18,
         R.raw.bg19
     )
-    private lateinit var videoPlaylist: MutableList<Int>   // فقط برای حالت رندم استفاده می‌شود
-    private var currentVideoIndex = 0      // ایندکس در playlist (رندم) یا ایندکس ویدیوی ثابت
+    private lateinit var videoPlaylist: MutableList<Int>
+    private var currentVideoIndex = 0
     private var videoLoopCounter = 0
-    private val maxLoopsPerVideo = 14      // تعداد تکرار هر ویدیو در حالت رندم
-    private var videoMode = 3             // 0..11: ویدیوی ثابت, 12: رندم
+    private val maxLoopsPerVideo = 14
+    private var videoMode = 3
     private var videoModeNames = listOf(
-        "ویدیو ۱", "ویدیو ۲", "ویدیو ۳", "ویدیو ۴", "ویدیو ۵", "ویدیو ۶",
-        "ویدیو ۷", "ویدیو ۸", "ویدیو ۹", "ویدیو ۱۰", "ویدیو ۱۱", "ویدیو ۱۲"
-        ,"ویدئو 13","ویدئو 14","ویدئو 15","ویدئو 16","ویدئو 17","ویدئو 18","ویدئو 19"
-        , "رندم"
+        "????? ?", "????? ?", "????? ?", "????? ?", "????? ?", "????? ?",
+        "????? ?", "????? ?", "????? ?", "????? ??", "????? ??", "????? ??",
+        "????? 13", "????? 14", "????? 15", "????? 16", "????? 17", "????? 18",
+        "????? 19", "????"
     )
 
     private lateinit var prefs: SharedPreferences
@@ -95,7 +97,7 @@ class VerseDetailActivity : FragmentActivity() {
     private lateinit var btnRepeat: Button
     private lateinit var btnSpeed: Button
     private lateinit var btnTranslation: Button
-    private lateinit var btnVideo: Button          // دکمه جدید
+    private lateinit var btnVideo: Button
     private lateinit var controlsLayout: LinearLayout
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -110,7 +112,6 @@ class VerseDetailActivity : FragmentActivity() {
         verseNumber = intent.getIntExtra("VERSE_NUMBER", 0)
         totalVerses = intent.getIntExtra("VERSE_COUNT", 0)
 
-        // خودترمیمی: اگر پارس‌کردن منابع قرآن/ترجمه با خطا مواجه شود، اپ کرش نکند
         allSurahs = try {
             QuranParser.parse(resources)
         } catch (e: Exception) {
@@ -128,6 +129,7 @@ class VerseDetailActivity : FragmentActivity() {
         initVideoPlaylist()
         buildUI()
         updateVerseDisplay()
+        prefetchNextVerses()      // پیش‌واکشی ۳ آیه بعدی
 
         playbackSpeed = prefs.getFloat("speed", 1.0f)
         playAudio()
@@ -139,7 +141,7 @@ class VerseDetailActivity : FragmentActivity() {
         currentTheme = prefs.getInt("theme", 5)
         playbackSpeed = prefs.getFloat("speed", 1.0f)
         translationEnabled = prefs.getBoolean("translation", true)
-        videoMode = prefs.getInt("videoMode", 3)  // پیش‌فرض ویدیو ۱
+        videoMode = prefs.getInt("videoMode", 3).coerceIn(0, videoResources.size)
     }
 
     private fun saveSettings() {
@@ -156,14 +158,14 @@ class VerseDetailActivity : FragmentActivity() {
     private fun updateButtonTexts() {
         val qariIndex = qariList.indexOf(currentQari).let { if (it >= 0) it else 0 }
         btnQari.text = "${qariEmojis[qariIndex]} ${qariNames[qariIndex]}"
-        btnTheme.text = "🎨 تم ${currentTheme + 1}"
-        btnRepeat.text = if (repeatCount == 0) "🔁 0" else "🔁 $repeatCount"
+        btnTheme.text = "? ?? ${currentTheme + 1}"
+        btnRepeat.text = if (repeatCount == 0) "? 0" else "? $repeatCount"
         val speedIndex = speedOptions.indexOfFirst { it == playbackSpeed }
             .let { if (it >= 0) it else speedOptions.indexOfFirst { s -> s == 1.0f }.coerceAtLeast(0) }
-        btnSpeed.text = "🏃‍♂️ ${speedLabels[speedIndex]}"
-        btnTranslation.text = if (translationEnabled) "🔤 ترجمه روشن" else "🔤 ترجمه خاموش"
+        btnSpeed.text = "???? ${speedLabels[speedIndex]}"
+        btnTranslation.text = if (translationEnabled) "? ????? ????" else "? ????? ?????"
         val videoIndex = videoMode.coerceIn(0, videoModeNames.lastIndex)
-        btnVideo.text = "🎬 ${videoModeNames[videoIndex]}"   // متن دکمه ویدیو
+        btnVideo.text = "? ${videoModeNames[videoIndex]}"
     }
 
     private fun initVideoPlaylist() {
@@ -194,7 +196,6 @@ class VerseDetailActivity : FragmentActivity() {
                 handleVideoCompletion()
             }
             setOnErrorListener { _, _, _ ->
-                // خودترمیمی: اگر ویدیو خراب/غیرقابل پخش بود، به‌جای گیر کردن روی صفحه سیاه برو سراغ بعدی
                 handleVideoCompletion()
                 true
             }
@@ -235,15 +236,15 @@ class VerseDetailActivity : FragmentActivity() {
             visibility = View.VISIBLE
         }
 
-        btnPrev = createControlButton("⏮️")
-        btnPlayPause = createControlButton("▶️")
-        btnNext = createControlButton("⏭️")
-        btnQari = createControlButton("🎤 شاطری")
-        btnTheme = createControlButton("🎨 تم ۱")
-        btnRepeat = createControlButton("🔁 0")
-        btnSpeed = createControlButton("🏃‍♂️ 1x")
-        btnTranslation = createControlButton("🔤 ترجمه")
-        btnVideo = createControlButton("🎬 ویدیو ۱")   // دکمه جدید
+        btnPrev = createControlButton("??")
+        btnPlayPause = createControlButton("??")
+        btnNext = createControlButton("??")
+        btnQari = createControlButton("? ?????")
+        btnTheme = createControlButton("? ?? ?")
+        btnRepeat = createControlButton("? 0")
+        btnSpeed = createControlButton("???? 1x")
+        btnTranslation = createControlButton("? ?????")
+        btnVideo = createControlButton("? ????? ?")
 
         controlsLayout.addView(btnPrev)
         controlsLayout.addView(btnPlayPause)
@@ -253,7 +254,7 @@ class VerseDetailActivity : FragmentActivity() {
         controlsLayout.addView(btnRepeat)
         controlsLayout.addView(btnSpeed)
         controlsLayout.addView(btnTranslation)
-        controlsLayout.addView(btnVideo)                // افزودن به پنل
+        controlsLayout.addView(btnVideo)
 
         overlay.addView(controlsLayout)
         root.addView(overlay)
@@ -272,37 +273,32 @@ class VerseDetailActivity : FragmentActivity() {
 
         updateButtonTexts()
         root.requestFocus()
-        playCurrentVideo()   // به جای playNextVideo
+        playCurrentVideo()
     }
 
-    // پخش ویدیوی مناسب بر اساس mode
     private fun playCurrentVideo() {
         if (isFinishing || isDestroyed) return
         try {
-            if (videoMode < 12) {
-                // ویدیوی ثابت
+            if (videoMode < videoResources.size) {
                 val safeIndex = videoMode.coerceIn(0, videoResources.lastIndex.coerceAtLeast(0))
                 val resId = videoResources.getOrNull(safeIndex) ?: return
                 videoBackground.setVideoURI(Uri.parse("android.resource://$packageName/$resId"))
             } else {
-                // حالت رندم
                 if (videoPlaylist.isEmpty()) return
                 val safeIndex = currentVideoIndex.coerceIn(0, videoPlaylist.lastIndex)
                 val resId = videoPlaylist[safeIndex]
                 videoBackground.setVideoURI(Uri.parse("android.resource://$packageName/$resId"))
             }
         } catch (e: Exception) {
-            // خودترمیمی: از کرش شدن به‌خاطر خطای پخش ویدیو جلوگیری می‌کنیم
+            // سکوت
         }
     }
 
     private fun handleVideoCompletion() {
         if (isFinishing || isDestroyed) return
-        if (videoMode < 12) {
-            // ویدیوی ثابت → لوپ بی‌نهایت
+        if (videoMode < videoResources.size) {
             try { videoBackground.start() } catch (e: Exception) { }
         } else {
-            // حالت رندم
             videoLoopCounter++
             if (videoLoopCounter < maxLoopsPerVideo) {
                 try { videoBackground.start() } catch (e: Exception) { }
@@ -392,6 +388,7 @@ class VerseDetailActivity : FragmentActivity() {
             verseNumber = newVerse
             isNewVerse = true
             updateVerseDisplay()
+            prefetchNextVerses()        // پیش‌واکشی آیات بعد
             if (isPlayingAudio) {
                 playAudio()
             }
@@ -403,7 +400,7 @@ class VerseDetailActivity : FragmentActivity() {
             currentSurahVerses[verseNumber - 1]
         } else ""
         val showBismillah = (verseNumber == 1 && surahId != 1 && surahId != 9)
-        val info = "سوره $surahName – آیه $verseNumber از $totalVerses"
+        val info = "???? $surahName ? ??? $verseNumber ?? $totalVerses"
 
         setVerseHtml(verseText, showBismillah, info)
 
@@ -414,13 +411,12 @@ class VerseDetailActivity : FragmentActivity() {
     }
 
     private fun setVerseHtml(verseText: String, showBismillah: Boolean, infoText: String) {
-        // خودترمیمی: اگر شماره تم به هر دلیل خارج از بازه معتبر بود، اپ کرش نکند
         val themeCount = QuranTheme.count
         val safeThemeIndex = if (themeCount > 0) ((currentTheme % themeCount) + themeCount) % themeCount else 0
         val theme = QuranTheme.getTheme(safeThemeIndex)
 
         val bismillahHtml = if (showBismillah) {
-            "<div class=\"bismillah\">بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ</div>"
+            "<div class=\"bismillah\">?????? ??????? ???????????? ??????????</div>"
         } else ""
 
         val translationText = if (translationEnabled && verseNumber <= currentTranslationVerses.size)
@@ -471,11 +467,11 @@ class VerseDetailActivity : FragmentActivity() {
         try {
             webViewVerse.loadDataWithBaseURL(null, html, "text/html", "UTF-8", null)
         } catch (e: Exception) {
-            // خودترمیمی: خطای رندر HTML نباید کل اپ را کرش کند
+            // سکوت
         }
     }
 
-    // ============= انتخاب‌های چرخشی =============
+    // ------------------- تنظیمات -------------------
     private fun cycleQari() {
         val currentIndex = qariList.indexOf(currentQari).let { if (it >= 0) it else 0 }
         val nextIndex = (currentIndex + 1) % qariList.size
@@ -487,7 +483,7 @@ class VerseDetailActivity : FragmentActivity() {
     private fun cycleTheme() {
         val themeCount = QuranTheme.count.coerceAtLeast(1)
         currentTheme = (currentTheme + 1) % themeCount
-        btnTheme.text = "🎨 تم ${currentTheme + 1}"
+        btnTheme.text = "? ?? ${currentTheme + 1}"
         updateVerseDisplay()
         saveSettings()
     }
@@ -496,7 +492,7 @@ class VerseDetailActivity : FragmentActivity() {
         val currentIndex = repeatOptions.indexOf(repeatCount).let { if (it >= 0) it else 0 }
         val nextIndex = (currentIndex + 1) % repeatOptions.size
         repeatCount = repeatOptions[nextIndex]
-        btnRepeat.text = if (repeatCount == 0) "🔁 0" else "🔁 $repeatCount"
+        btnRepeat.text = if (repeatCount == 0) "? 0" else "? $repeatCount"
         saveSettings()
     }
 
@@ -505,25 +501,23 @@ class VerseDetailActivity : FragmentActivity() {
             .let { if (it >= 0) it else speedOptions.indexOfFirst { s -> s == 1.0f }.coerceAtLeast(0) }
         val nextIndex = (currentIndex + 1) % speedOptions.size
         playbackSpeed = speedOptions[nextIndex]
-        btnSpeed.text = "🏃‍♂️ ${speedLabels[nextIndex]}"
+        btnSpeed.text = "???? ${speedLabels[nextIndex]}"
         saveSettings()
     }
 
     private fun toggleTranslation() {
         translationEnabled = !translationEnabled
-        btnTranslation.text = if (translationEnabled) "🔤 ترجمه روشن" else "🔤 ترجمه خاموش"
+        btnTranslation.text = if (translationEnabled) "? ????? ????" else "? ????? ?????"
         updateVerseDisplay()
         saveSettings()
     }
 
     private fun cycleVideo() {
-        videoMode = (videoMode + 1) % 13   // 0..12
+        videoMode = (videoMode + 1) % (videoResources.size + 1)
         val videoIndex = videoMode.coerceIn(0, videoModeNames.lastIndex)
-        btnVideo.text = "🎬 ${videoModeNames[videoIndex]}"
-        // ریست کردن شمارنده‌ها
+        btnVideo.text = "? ${videoModeNames[videoIndex]}"
         videoLoopCounter = 0
-        if (videoMode == 12) {
-            // حالت رندم: پلی‌لیست را به هم بزن
+        if (videoMode == videoResources.size) {
             videoPlaylist.shuffle()
             currentVideoIndex = 0
         }
@@ -531,7 +525,7 @@ class VerseDetailActivity : FragmentActivity() {
         saveSettings()
     }
 
-    // ============= صوت =============
+    // ------------------- پخش صدا -------------------
     private fun togglePlayPause() {
         if (isPlayingAudio) {
             pauseAudio()
@@ -543,7 +537,6 @@ class VerseDetailActivity : FragmentActivity() {
     }
 
     private fun playAudio() {
-        // نسل جدید برای این «جلسه پخش»؛ هر دانلود/پخش معلقِ نسل‌های قبلی از این پس نادیده گرفته می‌شود
         playRequestId++
         val requestId = playRequestId
 
@@ -574,7 +567,6 @@ class VerseDetailActivity : FragmentActivity() {
             startAudioPlayback(
                 localFile, requestId,
                 onCorrupt = {
-                    // خودترمیمی: اگر فایل کش‌شده خراب بود، یک بار دیگر تلاش کن، وگرنه از آیه ادامه بده
                     if (!hasRetried) playBismillahThenVerse(requestId, hasRetried = true)
                     else playCurrentVerseAudio(requestId)
                 }
@@ -594,7 +586,7 @@ class VerseDetailActivity : FragmentActivity() {
                         onSuccess = { if (requestId == playRequestId) playIt() },
                         onFailure = { msg ->
                             if (requestId == playRequestId && !isFinishing && !isDestroyed) {
-                                Toast.makeText(this, "خطا در دانلود بسم‌الله: $msg", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(this, "??? ?? ?????? ????????: $msg", Toast.LENGTH_SHORT).show()
                             }
                             if (requestId == playRequestId) playCurrentVerseAudio(requestId)
                         }
@@ -617,7 +609,6 @@ class VerseDetailActivity : FragmentActivity() {
             startAudioPlayback(
                 localFile, requestId,
                 onCorrupt = {
-                    // خودترمیمی: یک بار دیگر امتحان کن؛ اگر باز هم خراب بود دیگر گیر نکن
                     if (!hasRetried) playCurrentVerseAudio(requestId, hasRetried = true)
                 }
             ) { handleVerseCompletion(requestId) }
@@ -641,7 +632,7 @@ class VerseDetailActivity : FragmentActivity() {
                         onSuccess = { if (requestId == playRequestId) playIt() },
                         onFailure = { msg ->
                             if (requestId == playRequestId && !isFinishing && !isDestroyed) {
-                                Toast.makeText(this, "خطا در دانلود: $msg", Toast.LENGTH_LONG).show()
+                                Toast.makeText(this, "??? ?? ??????: $msg", Toast.LENGTH_LONG).show()
                             }
                         }
                     )
@@ -676,9 +667,8 @@ class VerseDetailActivity : FragmentActivity() {
                 try { mp.release() } catch (e: Exception) { }
                 if (mediaPlayer === mp) mediaPlayer = null
                 isPlayingAudio = false
-                btnPlayPause.text = "▶️"
+                btnPlayPause.text = "??"
                 if (requestId == playRequestId) {
-                    // خودترمیمی: فایل صوتی خراب را حذف کن تا در تلاش بعدی دوباره دانلود شود
                     try { if (file.exists()) file.delete() } catch (e: Exception) { }
                     onCorrupt?.invoke()
                 }
@@ -688,20 +678,19 @@ class VerseDetailActivity : FragmentActivity() {
                 try { mp.release() } catch (e: Exception) { }
                 if (mediaPlayer === mp) mediaPlayer = null
                 isPlayingAudio = false
-                btnPlayPause.text = "▶️"
+                btnPlayPause.text = "??"
                 if (requestId == playRequestId) onComplete?.invoke()
             }
             player.start()
             isPlayingAudio = true
-            btnPlayPause.text = "⏸️"
+            btnPlayPause.text = "??"
             setControlsVisibility(false)
         } catch (e: Exception) {
-            // خودترمیمی: فایل کش‌شده ناقص/خراب بود؛ پاکش کن و اجازه بده دوباره دانلود شود
             try { if (file.exists()) file.delete() } catch (ex: Exception) { }
             try { mediaPlayer?.release() } catch (ex: Exception) { }
             mediaPlayer = null
             isPlayingAudio = false
-            btnPlayPause.text = "▶️"
+            btnPlayPause.text = "??"
             onCorrupt?.invoke()
         }
     }
@@ -725,14 +714,13 @@ class VerseDetailActivity : FragmentActivity() {
                 if (isPlaying) {
                     pause()
                     isPlayingAudio = false
-                    btnPlayPause.text = "▶️"
+                    btnPlayPause.text = "??"
                 }
             } catch (e: Exception) { }
         }
     }
 
     private fun stopAudio(showControls: Boolean = true) {
-        // خودترمیمی: هر پاسخ دانلود/پخشِ معلقِ مربوط به قبل، از این لحظه منسوخ می‌شود
         playRequestId++
 
         mediaPlayer?.apply {
@@ -741,11 +729,11 @@ class VerseDetailActivity : FragmentActivity() {
         }
         mediaPlayer = null
         isPlayingAudio = false
-        btnPlayPause.text = "▶️"
+        btnPlayPause.text = "??"
         if (showControls) setControlsVisibility(true)
     }
 
-    // ============= دانلود =============
+    // ------------------- دانلود -------------------
     private fun downloadAudio(
         urlString: String,
         destination: File,
@@ -755,53 +743,111 @@ class VerseDetailActivity : FragmentActivity() {
         maxAttempts: Int = 2
     ) {
         if (!isNetworkAvailable()) {
-            onFailure("اینترنت قطع است")
+            onFailure("اینترنت در دسترس نیست")
             return
         }
+
+        val filePath = destination.absolutePath
+        val fileLock: Any
+        synchronized(lock) {
+            fileLock = downloadLocks.getOrPut(filePath) { Any() }
+        }
+
         Thread {
-            var connection: HttpURLConnection? = null
-            val tempFile = File(destination.parentFile, "${destination.name}.part")
-            try {
-                val url = URL(urlString)
-                connection = url.openConnection() as HttpURLConnection
-                connection.connectTimeout = 10000
-                connection.readTimeout = 10000
-                connection.setRequestProperty("User-Agent", "QuranTVApp")
-                if (connection.responseCode == HttpURLConnection.HTTP_OK) {
-                    destination.parentFile?.mkdirs()
-                    connection.inputStream.use { input ->
-                        FileOutputStream(tempFile).use { output ->
-                            input.copyTo(output)
-                        }
-                    }
-                    if (tempFile.exists() && tempFile.length() > 0) {
-                        // خودترمیمی: فایل نهایی فقط بعد از اطمینان از سالم و کامل بودن دانلود جایگزین می‌شود
-                        try { if (destination.exists()) destination.delete() } catch (_: Exception) {}
-                        if (!tempFile.renameTo(destination)) {
-                            tempFile.copyTo(destination, overwrite = true)
-                            try { tempFile.delete() } catch (_: Exception) {}
-                        }
+            synchronized(fileLock) {
+                var connection: HttpURLConnection? = null
+                val tempFile = File(destination.parentFile, "${destination.name}.part")
+                try {
+                    if (destination.exists() && destination.length() > 0) {
                         runOnUiThread { onSuccess() }
-                    } else {
-                        try { tempFile.delete() } catch (_: Exception) {}
-                        throw java.io.IOException("فایل دانلودشده خالی بود")
+                        return@Thread
                     }
-                } else {
-                    throw java.io.IOException("کد ${connection.responseCode}")
+
+                    val url = URL(urlString)
+                    connection = url.openConnection() as HttpURLConnection
+                    connection.connectTimeout = 10000
+                    connection.readTimeout = 10000
+                    connection.setRequestProperty("User-Agent", "QuranTVApp")
+                    if (connection.responseCode == HttpURLConnection.HTTP_OK) {
+                        destination.parentFile?.mkdirs()
+                        connection.inputStream.use { input ->
+                            FileOutputStream(tempFile).use { output ->
+                                input.copyTo(output)
+                            }
+                        }
+                        if (tempFile.exists() && tempFile.length() > 0) {
+                            try { if (destination.exists()) destination.delete() } catch (_: Exception) {}
+                            if (!tempFile.renameTo(destination)) {
+                                tempFile.copyTo(destination, overwrite = true)
+                                try { tempFile.delete() } catch (_: Exception) {}
+                            }
+                            runOnUiThread { onSuccess() }
+                        } else {
+                            try { tempFile.delete() } catch (_: Exception) {}
+                            throw java.io.IOException("فایل دانلود شده خالی است")
+                        }
+                    } else {
+                        throw java.io.IOException("کد ${connection.responseCode}")
+                    }
+                } catch (e: Exception) {
+                    try { tempFile.delete() } catch (_: Exception) {}
+                    if (attempt < maxAttempts) {
+                        try { Thread.sleep(600) } catch (_: InterruptedException) {}
+                        downloadAudio(urlString, destination, onSuccess, onFailure, attempt + 1, maxAttempts)
+                    } else {
+                        runOnUiThread { onFailure(e.localizedMessage ?: "خطای دانلود") }
+                    }
+                } finally {
+                    connection?.disconnect()
+                    synchronized(lock) {
+                        downloadLocks.remove(filePath)
+                    }
                 }
-            } catch (e: Exception) {
-                try { tempFile.delete() } catch (_: Exception) {}
-                if (attempt < maxAttempts) {
-                    // خودترمیمی: قبل از اعلام شکست نهایی، یک بار دیگر همین آدرس را امتحان کن
-                    try { Thread.sleep(600) } catch (_: InterruptedException) {}
-                    downloadAudio(urlString, destination, onSuccess, onFailure, attempt + 1, maxAttempts)
-                } else {
-                    runOnUiThread { onFailure(e.localizedMessage ?: "خطای ناشناخته") }
-                }
-            } finally {
-                connection?.disconnect()
             }
         }.start()
+    }
+
+    // ------------------- پیش‌واکشی -------------------
+    private fun prefetchNextVerses() {
+        var nextSurahId = surahId
+        var nextVerse = verseNumber
+
+        for (i in 1..3) {
+            nextVerse++
+            if (nextVerse > totalVerses) {
+                if (nextSurahId < 114) {
+                    nextSurahId++
+                    val nextSurah = allSurahs.find { it.chapterId == nextSurahId }
+                    if (nextSurah != null) {
+                        nextVerse = 1
+                        // totalVerses در ادامه استفاده نمی‌شود، فقط مسیر فایل می‌سازیم
+                    } else {
+                        break
+                    }
+                } else {
+                    break
+                }
+            }
+
+            val surahStr = nextSurahId.toString().padStart(3, '0')
+            val verseStr = nextVerse.toString().padStart(3, '0')
+            val fileName = "$surahStr$verseStr.mp3"
+            val relativePath = "audio/$currentQari/$surahStr/$fileName"
+            val localFile = File(cacheDir, relativePath)
+
+            if (localFile.exists() && localFile.length() > 0) continue
+
+            val baseDomain = "quran.1fe.ir"
+            val path = "/$currentQari/$surahStr/$fileName"
+            val httpsUrl = "https://$baseDomain$path"
+
+            downloadAudio(
+                urlString = httpsUrl,
+                destination = localFile,
+                onSuccess = { /* پیش‌واکشی موفق */ },
+                onFailure = { /* بی‌صدا */ }
+            )
+        }
     }
 
     private fun isNetworkAvailable(): Boolean {
@@ -815,7 +861,7 @@ class VerseDetailActivity : FragmentActivity() {
         }
     }
 
-    // ============= کنترل تلویزیون =============
+    // ------------------- دکمه‌های سخت‌افزاری -------------------
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
         val focused = currentFocus
         if (focused != null && isChildOf(controlsLayout, focused)) {
