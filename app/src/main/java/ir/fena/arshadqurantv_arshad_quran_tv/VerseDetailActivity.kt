@@ -68,7 +68,9 @@ class VerseDetailActivity : FragmentActivity() {
     private lateinit var videoBackground: VideoView
     private val videoResources = listOf(
         R.raw.bg1, R.raw.bg2, R.raw.bg3, R.raw.bg4, R.raw.bg5, R.raw.bg6,
-        R.raw.bg7, R.raw.bg8, R.raw.bg9, R.raw.bg10, R.raw.bg11, R.raw.bg12
+        R.raw.bg7, R.raw.bg8, R.raw.bg9, R.raw.bg10, R.raw.bg11, R.raw.bg12,
+        R.raw.bg13, R.raw.bg14, R.raw.bg15, R.raw.bg16, R.raw.bg17,R.raw.bg18,
+        R.raw.bg19
     )
     private lateinit var videoPlaylist: MutableList<Int>   // فقط برای حالت رندم استفاده می‌شود
     private var currentVideoIndex = 0      // ایندکس در playlist (رندم) یا ایندکس ویدیوی ثابت
