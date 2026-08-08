@@ -11,7 +11,7 @@
 در حال حاضر، این برنامه فقط از **زبان فارسی** پشتیبانی می‌کند.
 
 ## مجوز (لایسنس)
-این پروژه **هیچ مجوز رسمی (License)** ندارد و تمام حقوق مادی و معنوی آن برای توسعه‌دهنده محفوظ است.
+این پروژه **هیچ مجوز رسمی (License)** ندارد و استفاده از سورس کاملا آزاد است و تمام حقوق معنوی آن برای توسعه‌دهنده محفوظ است.
 
 ## نحوه نصب و اجرا
 برای نصب روی تلویزیون اندرویدی، فایل خروجی (APK) را از بخش **Releases** دانلود کرده و روی دستگاه نصب کنید.
@@ -25,4 +25,10 @@
 
 
 ##سایت نرم افزار
-https://cafebazaar.ir/app/ir.fena.arshadqurantv_arshad_quran_tv
+
+[Cafee Bazzar](https://cafebazaar.ir/app/ir.fena.arshadqurantv_arshad_quran_tv)
+
+[Myket](https://myket.ir/app/ir.fena.arshadqurantv_arshad_quran_tv)
+
+
+[quran](https://quran.1fe.ir/)
