@@ -25,4 +25,10 @@
 
 
 ##سایت نرم افزار
-https://cafebazaar.ir/app/ir.fena.arshadqurantv_arshad_quran_tv
+
+[Cafee Bazzar](https://cafebazaar.ir/app/ir.fena.arshadqurantv_arshad_quran_tv)
+
+[Myket](https://myket.ir/app/ir.fena.arshadqurantv_arshad_quran_tv)
+
+
+[quran](https://quran.1fe.ir/)
