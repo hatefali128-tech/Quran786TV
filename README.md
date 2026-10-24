@@ -28,10 +28,17 @@ Download the APK from the [Releases](../../releases) page and install it on your
 > **Note:** The screenshots below are taken from the original **Arshad Quran TV** (Persian) project. This fork, **Quran786TV**, is fully in **English** and operates in English.
 
 ![Screenshot 1](screenshots/1.png)
-![Screenshot 2](screenshots/2.png)
+![Screenshot 2](screenshots/6.png)
 ![Screenshot 3](screenshots/3.png)
 ![Screenshot 4](screenshots/4.png)
 ![Screenshot 5](screenshots/5.png)
+![Screenshot 5](screenshots/7.png)
+![Screenshot 5](screenshots/8.png)
+![Screenshot 5](screenshots/9.png)
+![Screenshot 5](screenshots/10.png)
+![Screenshot 5](screenshots/11.png)
+![Screenshot 5](screenshots/12.png)
+
 
 ## Download
 
