@@ -1,0 +1,34 @@
+// ============================================================================
+// Paste the following into your MainActivity (or Application class) to check
+// servers silently at startup. Nothing is shown to the user if any server works.
+// ============================================================================
+
+import android.app.AlertDialog
+import ir.fena.util.ServerPingUtil
+
+private fun checkServersSilentlyAtStartup() {
+    Thread {
+        val result = ServerPingUtil.selectBestServer()
+        runOnUiThread {
+            when (result) {
+                is ServerPingUtil.ServerSelection.Success -> {
+                    // Persist for later downloads, e.g.:
+                    // Prefs.downloadBaseUrl = result.server
+                    // (silent — no toast/dialog on success)
+                }
+                ServerPingUtil.ServerSelection.AllUnreachable -> {
+                    AlertDialog.Builder(this)
+                        .setTitle("Connection Error")
+                        .setMessage(getString(R.string.error_servers_unreachable))
+                        .setCancelable(false)
+                        .setPositiveButton("Retry") { _, _ -> checkServersSilentlyAtStartup() }
+                        .setNegativeButton("Exit")  { _, _ -> finish() }
+                        .show()
+                }
+            }
+        }
+    }.apply { isDaemon = true }.start()
+}
+
+// Call this from onCreate():
+// checkServersSilentlyAtStartup()

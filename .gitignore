@@ -1,15 +1,31 @@
-*.iml
-.gradle
-/local.properties
-/.idea/caches
-/.idea/libraries
-/.idea/modules.xml
-/.idea/workspace.xml
-/.idea/navEditor.xml
-/.idea/assetWizardSettings.xml
-.DS_Store
-/build
-/captures
-.externalNativeBuild
-.cxx
+# Gradle و خروجی‌های build
+.gradle/
+build/
+*/build/
+.cxx/
+*.apk
+*.aab
+*.ap_
+
+# تنظیمات محلی
 local.properties
+
+# فایل‌های Android Studio
+.idea/
+*.iml
+*.iws
+*.ipr
+.navigation/
+captures/
+
+# کلیدهای امضا (هرگز نباید آپلود شوند!)
+*.keystore
+*.jks
+*.pem
+key.properties
+
+# فایل‌های سیستمی
+.DS_Store
+Thumbs.db
+*.log
+.externalNativeBuild/

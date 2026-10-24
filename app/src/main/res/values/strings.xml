@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">arshad quran tv -  قرآن تلویزیون اندروید تی وی</string>
+    <string name="app_name">Quran 786</string>
     <string name="browse_title">Videos by Your Company</string>
     <string name="related_movies">Related Videos</string>
     <string name="grid_view">Grid View</string>
@@ -16,4 +16,10 @@
     <!-- Error messages -->
     <string name="error_fragment_message">An error occurred</string>
     <string name="dismiss_error">Dismiss</string>
+    <string name="error_servers_unreachable">Iran and Germany repositories are not reachable.</string>
+    <string name="select_translation_title">Select Translation</string>
+    <string name="turn_off_translation">Turn Off Translation</string>
+    <string name="translation_activated">Translation activated</string>
+    <string name="translation_turned_off">Translation turned off</string>
+    <string name="translation_download_failed">Download failed: %1$s</string>
 </resources>

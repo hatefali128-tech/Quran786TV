@@ -11,7 +11,7 @@
         android:name="android.software.leanback"
         android:required="true" />
 
-    <application
+    <application android:usesCleartextTraffic="true"
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
@@ -48,6 +48,15 @@
         <activity android:name=".AboutActivity" />
         <activity android:name=".ContactActivity" />
 
+            <activity
+            android:name="ir.fena.ui.TranslationSelectActivity"
+            android:exported="false"
+            android:label="@string/select_translation_title" />
+            <activity
+            android:name=".TranslationSelectActivity"
+            android:exported="false"
+            android:screenOrientation="landscape"
+            android:theme="@android:style/Theme.NoTitleBar.Fullscreen" />
     </application>
 
 </manifest>

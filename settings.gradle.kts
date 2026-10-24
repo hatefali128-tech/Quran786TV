@@ -22,5 +22,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "arshad quran tv -  قرآن تلویزیون اندروید تی وی"
+rootProject.name = "Quran 786"
 include(":app")

@@ -1,0 +1,25 @@
+// ============================================================================
+// In MainActivity (or wherever the old on/off translation toggle lives),
+// replace the old toggle with:
+// ============================================================================
+
+import android.content.Intent
+import ir.fena.ui.TranslationSelectActivity
+
+// Replace old toggle:
+startActivity(Intent(this, TranslationSelectActivity::class.java))
+
+// ============================================================================
+// Wherever the app currently loads translate.xml, honor the user's choice:
+// ============================================================================
+
+import ir.fena.util.ActiveTranslationStore
+import java.io.File
+
+fun resolveActiveTranslationFile(): File? {
+    // If translation is OFF -> return null, show Quran text only.
+    ActiveTranslationStore.getActiveId(this) ?: return null
+    // Prefer the downloaded copy installed by TranslationDownloader.installAsActive
+    val local = File(filesDir, "translate.xml")
+    return if (local.exists() && local.length() > 0L) local else null
+}
