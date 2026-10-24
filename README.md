@@ -1,34 +1,49 @@
-# Arshad Quran Android TV
+# Quran786TV
 
-یک قرآن مالتی‌مدیا (چندرسانه‌ای) اختصاصی برای تلویزیون‌های اندرویدی (Android TV).
+**Quran786TV** is a fork of [Arshad Quran TV](https://github.com/hatefali128-tech/Arshad_Quran_Android_TV), rebuilt and enhanced for Android TV.
 
-## ویژگی‌ها
-- پخش و نمایش آیات قرآن با کیفیت بالا
-- طراحی رابط کاربری مناسب برای کنترل با ریموت تلویزیون
-- پیمایش ساده و دسترسی سریع به سوره‌ها
+## Features
 
-## زبان برنامه
-در حال حاضر، این برنامه فقط از **زبان فارسی** پشتیبانی می‌کند.
+- High-quality Quran verses playback
+- **Multi-language translations in 210+ languages** powered by Google Translate
+- TV-optimized UI with remote control navigation
+- Fast and smooth browsing between surahs
+- Lightweight and easy to install
 
-## مجوز (لایسنس)
-این پروژه **هیچ مجوز رسمی (License)** ندارد و استفاده از سورس کاملا آزاد است و تمام حقوق معنوی آن برای توسعه‌دهنده محفوظ است.
+## About This Fork
 
-## نحوه نصب و اجرا
-برای نصب روی تلویزیون اندرویدی، فایل خروجی (APK) را از بخش **Releases** دانلود کرده و روی دستگاه نصب کنید.
+This project is based on the original **Arshad Quran TV** Android application. Quran786TV adds:
 
-## تصاویر برنامه
-![عکس 1](screenshots/1.png)
-![عکس 2](screenshots/2.png)
-![عکس 3](screenshots/3.png)
-![عکس 4](screenshots/4.png)
-![عکس 5](screenshots/5.png)
+- Extended translation support for **210+ languages** via Google Translate
+- Improved UI/UX for large TV screens
+- Additional translation server selection options
+- Better performance and stability
 
+## Installation
 
-##سایت نرم افزار
+Download the APK from the [Releases](../../releases) page and install it on your Android TV device.
 
-[Cafee Bazzar](https://cafebazaar.ir/app/ir.fena.arshadqurantv_arshad_quran_tv)
+## Screenshots
 
-[Myket](https://myket.ir/app/ir.fena.arshadqurantv_arshad_quran_tv)
+![Screenshot 1](screenshots/1.png)
+![Screenshot 2](screenshots/2.png)
+![Screenshot 3](screenshots/3.png)
+![Screenshot 4](screenshots/4.png)
+![Screenshot 5](screenshots/5.png)
 
+## Download
 
-[quran](https://quran.1fe.ir/)
+- [Cafe Bazaar](https://cafebazaar.ir/app/ir.fena.arshadqurantv_arshad_quran_tv)
+- [Myket](https://myket.ir/app/ir.fena.arshadqurantv_arshad_quran_tv)
+
+## Website
+
+[quran.1fe.ir](https://quran.1fe.ir/)
+
+## License
+
+No official license. Free to use; all moral rights reserved by the developer.
+
+---
+
+If you find this project useful, please give it a star!
