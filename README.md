@@ -47,7 +47,7 @@ Download the APK from the [Releases](../../releases) page and install it on your
 
 ## Website
 
-[quran.1fe.ir](https://quran.1fe.ir/)
+[quran.1fe.ir](https://quran2.1fe.ir/)
 
 ## License
 
