@@ -53,7 +53,7 @@ Download the APK from the [Releases](../../releases) page and install it on your
 
 ## License
 
-No official license. Free to use; all moral rights reserved by the developer.
+MIT license. Free to use; all moral rights reserved by the developer.
 
 ---
 
