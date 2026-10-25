@@ -47,8 +47,8 @@ Download the APK from the [Releases](../../releases) page and install it on your
 
 ## Website
 
-[quran2.1fe.ir](https://quran2.1fe.ir/)
-[source forge](https://sourceforge.net/projects/quran-786-tv-quran-android-tv/)
+- [quran2.1fe.ir](https://quran2.1fe.ir/)
+- [source forge](https://sourceforge.net/projects/quran-786-tv-quran-android-tv/)
 
 
 ## License
