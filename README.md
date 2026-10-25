@@ -55,6 +55,12 @@ Download the APK from the [Releases](../../releases) page and install it on your
 
 MIT license. Free to use; all moral rights reserved by the developer.
 
+## Contact
+
+If you have any questions about this Privacy Policy, please contact us at:
+
+[alefsoft@protonmail.com]
+
 ---
 
 If you find this project useful, please give it a star!
