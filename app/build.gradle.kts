@@ -14,8 +14,8 @@ android {
         applicationId = "ir.fena.qurantv786_tv"
         minSdk = 24
         targetSdk = 36
-        versionCode = 3
-        versionName = "1.2"
+        versionCode = 10400
+        versionName = "1.4.0"
 
     }
 

@@ -1,7 +1,6 @@
 package ir.fena.qurantv786_tv
 
 import android.annotation.SuppressLint
-import android.app.AlertDialog
 import android.content.Context
 import android.content.SharedPreferences
 import android.content.pm.ActivityInfo
@@ -36,7 +35,7 @@ import java.util.concurrent.Executors
 
 class VerseDetailActivity : FragmentActivity() {
 
-    // ============== state موجود ==============
+    // ============== state ==============
     private var surahId = 0
     private var surahName = ""
     private var verseNumber = 0
@@ -79,6 +78,9 @@ class VerseDetailActivity : FragmentActivity() {
     private var displayRequestId = 0
     private var prefetchGeneration = 0
     private var googleUnavailableShown = false
+
+    // ============== انتخاب سرور ==============
+    private val serverWaitExecutor = Executors.newSingleThreadExecutor()
 
     // ============== ویدیو ==============
     private lateinit var videoBackground: VideoView
@@ -135,6 +137,11 @@ class VerseDetailActivity : FragmentActivity() {
             else TranslationParser.parse(resources)
         } catch (_: Exception) { emptyList() }
         currentTranslationVerses = translationList.find { it.index == surahId }?.verses ?: emptyList()
+
+        // شروع تست سرور در پس‌زمینه — بلافاصله پس از ساخت UI
+        Thread {
+            ServerSelector.ensureSelected()
+        }.apply { isDaemon = true }.start()
 
         initVideoPlaylist()
         buildUI()
@@ -418,11 +425,10 @@ class VerseDetailActivity : FragmentActivity() {
         .replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
     // ==================================================================
-    // ============== ترجمه: هستهٔ اصلی ==============
+    // ============== ترجمه ==============
     // ==================================================================
     private fun translationKey(s: Int, v: Int, lang: String) = "${s}_${v}_${lang}"
 
-    /** فراخوانی همگام Google Translate با تلاش مجدد. فقط از ترد پس‌زمینه صدا بزن. */
     private fun fetchGoogleTranslationSync(verseText: String, targetLang: String, maxAttempts: Int = 5): String? {
         if (verseText.isEmpty()) return null
         val encoded = try { URLEncoder.encode(verseText, "UTF-8") } catch (_: Exception) { return null }
@@ -463,7 +469,6 @@ class VerseDetailActivity : FragmentActivity() {
         return null
     }
 
-    /** ترجمهٔ آیهٔ جاری. فقط از ترد پس‌زمینه. برای فارسی از XML؛ بقیه از Google با کش. */
     private fun getTranslationForCurrentVerseSync(): String {
         val persianText = currentTranslationVerses.getOrNull(verseNumber - 1) ?: return ""
         if (selectedLangCode == "fa") return persianText
@@ -481,7 +486,6 @@ class VerseDetailActivity : FragmentActivity() {
         return ""
     }
 
-    /** پیش‌واکشی مخفی ۱۰ آیهٔ بعد. سریال روی یک ترد؛ هر بار فراخوانی نسل قبلی را لغو می‌کند. */
     private fun prefetchTranslationsAhead() {
         if (selectedLangCode == "fa" || !translationEnabled) return
         prefetchGeneration++
@@ -514,7 +518,6 @@ class VerseDetailActivity : FragmentActivity() {
             }
         }
     }
-
 
     // ==================================================================
     private fun launchLanguageSelector() {
@@ -581,8 +584,24 @@ class VerseDetailActivity : FragmentActivity() {
     }
 
     // ==================================================================
-    // ============== صوت (بدون تغییر) ==============
+    // ============== صوت + انتخاب سرور ==============
     // ==================================================================
+
+    /**
+     * قبل از هر پخش، مطمئن می‌شویم که سرور انتخاب شده است.
+     * اگر انتخاب انجام شده باشد، بلافاصله onReady صدا زده می‌شود؛ در غیر این صورت
+     * در پس‌زمینه صبر می‌کنیم.
+     */
+    private fun ensureServerReady(onReady: () -> Unit) {
+        if (ServerSelector.primary() != null) { onReady(); return }
+        serverWaitExecutor.execute {
+            ServerSelector.ensureSelected()
+            mainHandler.post {
+                if (!isFinishing && !isDestroyed) onReady()
+            }
+        }
+    }
+
     private fun togglePlayPause() {
         if (isPlayingAudio) { pauseAudio(); setControlsVisibility(true) }
         else { playAudio(); setControlsVisibility(false) }
@@ -592,32 +611,37 @@ class VerseDetailActivity : FragmentActivity() {
         playRequestId++
         val req = playRequestId
         if (isNewVerse) { remainingRepeats = repeatCount; isNewVerse = false }
-        if (verseNumber == 1 && surahId != 1 && surahId != 9) { playBismillahThenVerse(req); return }
-        playCurrentVerseAudio(req)
+
+        ensureServerReady {
+            if (req != playRequestId || isFinishing || isDestroyed) return@ensureServerReady
+            if (ServerSelector.primary() == null) {
+                Toast.makeText(this, "No download server available", Toast.LENGTH_LONG).show()
+                return@ensureServerReady
+            }
+            if (verseNumber == 1 && surahId != 1 && surahId != 9) {
+                playBismillahThenVerse(req)
+            } else {
+                playCurrentVerseAudio(req)
+            }
+        }
     }
 
     private fun playBismillahThenVerse(requestId: Int, hasRetried: Boolean = false) {
         if (requestId != playRequestId) return
         val fileName = "bismillah.mp3"
-        val baseDomain = "quran.1fe.ir"
         val localFile = File(cacheDir, "audio/$currentQari/$fileName")
         fun playIt() {
             startAudioPlayback(localFile, requestId,
-                onCorrupt = { if (!hasRetried) playBismillahThenVerse(requestId, true) else playCurrentVerseAudio(requestId) }
+                onCorrupt = {
+                    if (!hasRetried) playBismillahThenVerse(requestId, true)
+                    else playCurrentVerseAudio(requestId)
+                }
             ) { playCurrentVerseAudio(requestId) }
         }
         if (localFile.exists() && localFile.length() > 0) { playIt(); return }
-        downloadAudio("http://$baseDomain/$currentQari/$fileName", localFile,
+        downloadAudioFromServers("/$currentQari/$fileName", localFile,
             onSuccess = { if (requestId == playRequestId) playIt() },
-            onFailure = {
-                if (requestId == playRequestId) {
-                    downloadAudio("https://$baseDomain/$currentQari/$fileName", localFile,
-                        onSuccess = { if (requestId == playRequestId) playIt() },
-                        onFailure = {
-                            if (requestId == playRequestId) playCurrentVerseAudio(requestId)
-                        })
-                }
-            })
+            onFailure = { if (requestId == playRequestId) playCurrentVerseAudio(requestId) })
     }
 
     private fun playCurrentVerseAudio(requestId: Int, hasRetried: Boolean = false) {
@@ -632,25 +656,40 @@ class VerseDetailActivity : FragmentActivity() {
             ) { handleVerseCompletion(requestId) }
         }
         if (localFile.exists() && localFile.length() > 0) { playIt(); return }
-        val base = "quran.1fe.ir"
-        val path = "/$currentQari/$surahStr/$fileName"
-        downloadAudio("http://$base$path", localFile,
+        downloadAudioFromServers("/$currentQari/$surahStr/$fileName", localFile,
             onSuccess = { if (requestId == playRequestId) playIt() },
-            onFailure = {
-                if (requestId == playRequestId) {
-                    downloadAudio("https://$base$path", localFile,
-                        onSuccess = { if (requestId == playRequestId) playIt() },
-                        onFailure = { msg ->
-                            if (requestId == playRequestId && !isFinishing && !isDestroyed)
-                                Toast.makeText(this, "Download error: $msg", Toast.LENGTH_LONG).show()
-                        })
-                }
+            onFailure = { msg ->
+                if (requestId == playRequestId && !isFinishing && !isDestroyed)
+                    Toast.makeText(this, "Download error: $msg", Toast.LENGTH_LONG).show()
             })
     }
 
+    /**
+     * تلاش برای دانلود از همهٔ سرورهای موفق به‌ترتیب سرعت.
+     * اگر اولی خطا داد، بعدی امتحان می‌شود.
+     */
+    private fun downloadAudioFromServers(relativePath: String, dest: File,
+                                         onSuccess: () -> Unit,
+                                         onFailure: (String) -> Unit) {
+        val servers = ServerSelector.rankedServers()
+        if (servers.isEmpty()) { onFailure("No download server"); return }
+        tryNextServer(servers, 0, relativePath, dest, onSuccess, onFailure)
+    }
+
+    private fun tryNextServer(servers: List<ServerSelector.Result>, idx: Int,
+                              relativePath: String, dest: File,
+                              onSuccess: () -> Unit,
+                              onFailure: (String) -> Unit) {
+        if (idx >= servers.size) { onFailure("All servers failed"); return }
+        val url = servers[idx].baseUrl + relativePath
+        downloadAudio(url, dest,
+            onSuccess = onSuccess,
+            onFailure = { err -> tryNextServer(servers, idx + 1, relativePath, dest, onSuccess, onFailure) })
+    }
+
     private fun startAudioPlayback(file: File, requestId: Int,
-                                    onCorrupt: (() -> Unit)? = null,
-                                    onComplete: (() -> Unit)? = null) {
+                                   onCorrupt: (() -> Unit)? = null,
+                                   onComplete: (() -> Unit)? = null) {
         if (requestId != playRequestId || isFinishing || isDestroyed) return
         try { mediaPlayer?.release() } catch (_: Exception) {}
         mediaPlayer = null
@@ -767,6 +806,7 @@ class VerseDetailActivity : FragmentActivity() {
     }
 
     private fun prefetchNextVerses() {
+        val primary = ServerSelector.primary() ?: return
         var s = surahId; var v = verseNumber
         for (i in 1..3) {
             v++
@@ -780,7 +820,7 @@ class VerseDetailActivity : FragmentActivity() {
             val fileName = "$surahStr$verseStr.mp3"
             val localFile = File(cacheDir, "audio/$currentQari/$surahStr/$fileName")
             if (localFile.exists() && localFile.length() > 0) continue
-            downloadAudio("https://quran.1fe.ir/$currentQari/$surahStr/$fileName", localFile,
+            downloadAudio(primary + "/$currentQari/$surahStr/$fileName", localFile,
                 onSuccess = {}, onFailure = {})
         }
     }
@@ -820,6 +860,7 @@ class VerseDetailActivity : FragmentActivity() {
     override fun onDestroy() {
         super.onDestroy()
         translationExecutor.shutdownNow()
+        serverWaitExecutor.shutdownNow()
         stopAudio(showControls = false)
         try { videoBackground.stopPlayback() } catch (_: Exception) {}
         try { HistoryActivity.addRecord(this, surahId, surahName, verseNumber, totalVerses) } catch (_: Exception) {}

@@ -28,6 +28,12 @@ class MainActivity : FragmentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // شروع تست سرور در پس‌زمینه — به محض بالا آمدن اپ
+        // نتیجه در ServerSelector کش می‌شود و DownloadActivity / VerseDetailActivity
+        // از آن استفاده می‌کنند.
+        Thread { ServerSelector.ensureSelected() }.apply { isDaemon = true }.start()
+
         setContentView(R.layout.activity_main)
         if (savedInstanceState == null) {
             supportFragmentManager.beginTransaction()
@@ -241,7 +247,7 @@ class MainActivity : FragmentActivity() {
                 rowsAdapter.add(ListRow(header, listRowAdapter))
             }
 
-            // *** ردیف دسترسی سریع با سه گزینه جدید ***
+            // *** ردیف دسترسی سریع ***
             val gridHeader = HeaderItem(surahChunks.size.toLong() + 1, "Quick Access")
             val gridPresenter = GridItemPresenter()
             val gridRowAdapter = ArrayObjectAdapter(gridPresenter)

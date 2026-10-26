@@ -29,15 +29,16 @@ class DownloadActivity : FragmentActivity() {
     private val qariNames = listOf("Shatri", "Afasy", "Parhizgar", "Minshawi")
 
     private var selectedQari = "sh"
-    private val allFiles = mutableListOf<AudioFile>()      // ???? ??????? (?? ????)
+    private val allFiles = mutableListOf<AudioFile>()
     private val downloadedFiles = mutableListOf<AudioFile>()
-    private val downloadingFiles = mutableListOf<AudioFile>()   // ?????? ?? ??? ????? ?????
+    private val downloadingFiles = mutableListOf<AudioFile>()
     private val pendingFiles = mutableListOf<AudioFile>()
 
     private lateinit var btnDownloadAll: Button
     private lateinit var btnStop: Button
     private lateinit var progressBar: ProgressBar
     private lateinit var tvProgressText: TextView
+    private lateinit var tvServerStatus: TextView
     private lateinit var progressLayout: LinearLayout
     private lateinit var rvDownloaded: RecyclerView
     private lateinit var rvDownloading: RecyclerView
@@ -50,13 +51,10 @@ class DownloadActivity : FragmentActivity() {
     private lateinit var adapterPending: FileListAdapter
     private val qariButtons = mutableListOf<Button>()
 
-    // ????? ?????????? ?? ??? ???? ???? ????? ????????? (?????? ????????)
     private val downloadThreads = maxOf(12, Runtime.getRuntime().availableProcessors() * 4)
     private val executor = Executors.newFixedThreadPool(downloadThreads)
     private val stopFlag = AtomicBoolean(false)
     private var isDownloading = false
-
-    // ????? ????? ????? ????? ????? ????? ??????? (??????? ?? ?????? ???)
     private val copyBufferSize = 64 * 1024
 
     enum class PanelType { DOWNLOADED, DOWNLOADING, PENDING }
@@ -82,8 +80,34 @@ class DownloadActivity : FragmentActivity() {
         rvDownloaded.adapter = adapterDownloaded
         rvDownloading.adapter = adapterDownloading
         rvPending.adapter = adapterPending
-        selectQari(0)   // ??????? ?????
+        selectQari(0)
         updateProgressDisplay()
+        startServerTest()
+    }
+
+    // ---------- تست سرور در پس‌زمینه ----------
+    private fun startServerTest() {
+        tvServerStatus.text = "🌐 Testing servers..."
+        tvServerStatus.setTextColor(Color.parseColor("#AAAAAA"))
+        Thread {
+            ServerSelector.ensureSelected()
+            val primary = ServerSelector.primary()
+            val top = ServerSelector.rankedServers().firstOrNull()
+            val rankedCount = ServerSelector.rankedServers().size
+            runOnUiThread {
+                if (isFinishing || isDestroyed) return@runOnUiThread
+                if (primary == null) {
+                    tvServerStatus.text = "⚠️ No download server available"
+                    tvServerStatus.setTextColor(Color.parseColor("#FF5252"))
+                } else {
+                    val label = top?.label ?: primary
+                    val ms = top?.elapsedMs ?: 0L
+                    tvServerStatus.text =
+                        "🌐 Server: $label — ${ms}ms  (${rankedCount}/4 reachable)"
+                    tvServerStatus.setTextColor(Color.parseColor("#4CAF50"))
+                }
+            }
+        }.apply { isDaemon = true }.start()
     }
 
     // ---------- UI ----------
@@ -99,11 +123,20 @@ class DownloadActivity : FragmentActivity() {
             textSize = 20f
             setTextColor(Color.WHITE)
             gravity = Gravity.CENTER
-            setPadding(0, 0, 0, 16)
+            setPadding(0, 0, 0, 8)
         }
         root.addView(tvGuide)
 
-        // ???????? ?????? ????
+        // وضعیت سرور
+        tvServerStatus = TextView(this).apply {
+            text = "🌐 Testing servers..."
+            textSize = 14f
+            setTextColor(Color.parseColor("#AAAAAA"))
+            gravity = Gravity.CENTER
+            setPadding(0, 0, 0, 16)
+        }
+        root.addView(tvServerStatus)
+
         val qariLayout = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER
@@ -129,7 +162,6 @@ class DownloadActivity : FragmentActivity() {
         }
         root.addView(qariLayout)
 
-        // ???????? ?????? ? ????
         val actionLayout = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER
@@ -143,9 +175,7 @@ class DownloadActivity : FragmentActivity() {
             isFocusable = true
             setPadding(24, 16, 24, 16)
             layoutParams = LinearLayout.LayoutParams(
-                0,
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-                1f
+                0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f
             )
             setOnClickListener { startDownload() }
         }
@@ -158,9 +188,7 @@ class DownloadActivity : FragmentActivity() {
             setPadding(24, 16, 24, 16)
             visibility = View.GONE
             layoutParams = LinearLayout.LayoutParams(
-                0,
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-                1f
+                0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f
             ).apply { setMargins(16, 0, 0, 0) }
             setOnClickListener { stopDownload() }
         }
@@ -168,7 +196,6 @@ class DownloadActivity : FragmentActivity() {
         actionLayout.addView(btnStop)
         root.addView(actionLayout)
 
-        // ???? ?????? ????? ???? (???? ? ????)
         progressLayout = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
@@ -181,11 +208,7 @@ class DownloadActivity : FragmentActivity() {
             progressTintList = ColorStateList.valueOf(Color.parseColor("#4CAF50"))
             secondaryProgressTintList = ColorStateList.valueOf(Color.parseColor("#FFC107"))
             progressBackgroundTintList = ColorStateList.valueOf(Color.parseColor("#2A2A2A"))
-            layoutParams = LinearLayout.LayoutParams(
-                0,
-                48,
-                1f
-            )
+            layoutParams = LinearLayout.LayoutParams(0, 48, 1f)
         }
         tvProgressText = TextView(this).apply {
             text = "0 / 0"
@@ -200,37 +223,27 @@ class DownloadActivity : FragmentActivity() {
         progressLayout.addView(tvProgressText)
         root.addView(progressLayout)
 
-        // ?? ??? ?????? ??? / ??? ??? ????? / ????
         val panelsLayout = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                0,
-                1f
+                LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f
             )
         }
 
         val (downloadedPanel, tvDlHeader, rvDl) = buildPanel(
-            headerText = "Downloaded",
-            headerColor = "#4CAF50",
-            marginRight = 6
+            "Downloaded", "#4CAF50", marginRight = 6
         )
         tvDownloadedHeader = tvDlHeader
         rvDownloaded = rvDl
 
         val (downloadingPanel, tvIngHeader, rvIng) = buildPanel(
-            headerText = "Downloading",
-            headerColor = "#FFC107",
-            marginRight = 6,
-            marginLeft = 6
+            "Downloading", "#FFC107", marginRight = 6, marginLeft = 6
         )
         tvDownloadingHeader = tvIngHeader
         rvDownloading = rvIng
 
         val (pendingPanel, tvPendHeader, rvPend) = buildPanel(
-            headerText = "Pending",
-            headerColor = "#FF5722",
-            marginLeft = 6
+            "Pending", "#FF5722", marginLeft = 6
         )
         tvPendingHeader = tvPendHeader
         rvPending = rvPend
@@ -243,7 +256,6 @@ class DownloadActivity : FragmentActivity() {
         return root
     }
 
-    /** ?? ??? ????? ?? ??????? ? RecyclerView ????? ????? ????????? */
     private fun buildPanel(
         headerText: String,
         headerColor: String,
@@ -259,9 +271,7 @@ class DownloadActivity : FragmentActivity() {
             }
             setPadding(4, 4, 4, 4)
             layoutParams = LinearLayout.LayoutParams(
-                0,
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                1f
+                0, LinearLayout.LayoutParams.MATCH_PARENT, 1f
             ).apply { setMargins(marginLeft, 0, marginRight, 0) }
         }
         val header = TextView(this).apply {
@@ -285,16 +295,12 @@ class DownloadActivity : FragmentActivity() {
     private fun createButtonBackground(): StateListDrawable {
         val stateList = StateListDrawable()
         val focused = GradientDrawable().apply {
-            shape = GradientDrawable.RECTANGLE
-            cornerRadius = 16f
-            setColor(Color.parseColor("#3F51B5"))
-            setStroke(3, Color.parseColor("#FFC107"))
+            shape = GradientDrawable.RECTANGLE; cornerRadius = 16f
+            setColor(Color.parseColor("#3F51B5")); setStroke(3, Color.parseColor("#FFC107"))
         }
         val normal = GradientDrawable().apply {
-            shape = GradientDrawable.RECTANGLE
-            cornerRadius = 16f
-            setColor(Color.parseColor("#2A2A2A"))
-            setStroke(1, Color.parseColor("#555555"))
+            shape = GradientDrawable.RECTANGLE; cornerRadius = 16f
+            setColor(Color.parseColor("#2A2A2A")); setStroke(1, Color.parseColor("#555555"))
         }
         stateList.addState(intArrayOf(android.R.attr.state_focused), focused)
         stateList.addState(intArrayOf(), normal)
@@ -304,16 +310,12 @@ class DownloadActivity : FragmentActivity() {
     private fun createAccentButtonBackground(): StateListDrawable {
         val stateList = StateListDrawable()
         val focused = GradientDrawable().apply {
-            shape = GradientDrawable.RECTANGLE
-            cornerRadius = 16f
-            setColor(Color.parseColor("#43A047"))
-            setStroke(3, Color.parseColor("#FFC107"))
+            shape = GradientDrawable.RECTANGLE; cornerRadius = 16f
+            setColor(Color.parseColor("#43A047")); setStroke(3, Color.parseColor("#FFC107"))
         }
         val normal = GradientDrawable().apply {
-            shape = GradientDrawable.RECTANGLE
-            cornerRadius = 16f
-            setColor(Color.parseColor("#2E7D32"))
-            setStroke(1, Color.parseColor("#555555"))
+            shape = GradientDrawable.RECTANGLE; cornerRadius = 16f
+            setColor(Color.parseColor("#2E7D32")); setStroke(1, Color.parseColor("#555555"))
         }
         stateList.addState(intArrayOf(android.R.attr.state_focused), focused)
         stateList.addState(intArrayOf(), normal)
@@ -322,14 +324,12 @@ class DownloadActivity : FragmentActivity() {
 
     private fun createSelectedQariBackground(): GradientDrawable {
         return GradientDrawable().apply {
-            shape = GradientDrawable.RECTANGLE
-            cornerRadius = 16f
-            setColor(Color.parseColor("#FFC107"))
-            setStroke(3, Color.WHITE)
+            shape = GradientDrawable.RECTANGLE; cornerRadius = 16f
+            setColor(Color.parseColor("#FFC107")); setStroke(3, Color.WHITE)
         }
     }
 
-    // ---------- ?????? ??????? ----------
+    // ---------- لیست فایل‌ها ----------
     private fun loadAllFiles() {
         allFiles.clear()
         val surahs = QuranParser.parse(resources)
@@ -383,7 +383,6 @@ class DownloadActivity : FragmentActivity() {
         }
     }
 
-    // ---------- ????? ?????? ----------
     private fun updateProgressDisplay() {
         val total = allFiles.size
         val downloaded = downloadedFiles.size
@@ -400,12 +399,31 @@ class DownloadActivity : FragmentActivity() {
         tvPendingHeader.text = "Pending (${pendingFiles.size})"
     }
 
-    // ---------- ?????? ----------
+    // ---------- دانلود ----------
     private fun startDownload() {
         if (isDownloading) return
         if (pendingFiles.isEmpty() && downloadingFiles.isEmpty()) {
-            Toast.makeText(this, "همهٔ فایلها قبلاً دانلود شده اند", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "همهٔ فایل‌ها قبلاً دانلود شده اند", Toast.LENGTH_SHORT).show()
             checkAllDownloaded()
+            return
+        }
+
+        // اگر تست سرور هنوز تمام نشده، منتظر می‌مانیم
+        if (ServerSelector.primary() == null) {
+            Toast.makeText(this, "Testing servers, please wait...", Toast.LENGTH_SHORT).show()
+            Thread {
+                ServerSelector.ensureSelected()
+                val ready = ServerSelector.primary() != null
+                runOnUiThread {
+                    if (isFinishing || isDestroyed) return@runOnUiThread
+                    if (ready) {
+                        startServerTest() // به‌روزرسانی UI
+                        startDownload()
+                    } else {
+                        Toast.makeText(this, "No download server available", Toast.LENGTH_LONG).show()
+                    }
+                }
+            }.apply { isDaemon = true }.start()
             return
         }
 
@@ -421,7 +439,6 @@ class DownloadActivity : FragmentActivity() {
             executor.submit {
                 if (stopFlag.get()) return@submit
 
-                // ???? ????? ?? ????? "??? ??? ????? ?????" ??? ????? ????? ?????
                 runOnUiThread {
                     pendingFiles.remove(file)
                     if (!downloadingFiles.contains(file)) downloadingFiles.add(file)
@@ -431,21 +448,16 @@ class DownloadActivity : FragmentActivity() {
                 }
 
                 val surahStr = file.surahId.toString().padStart(3, '0')
-                val httpUrl = "http://quran.1fe.ir/$selectedQari/$surahStr/${file.fileName}"
-                val httpsUrl = "https://quran.1fe.ir/$selectedQari/$surahStr/${file.fileName}"
+                val relativePath = "/$selectedQari/$surahStr/${file.fileName}"
 
-                var success = downloadFile(httpUrl, file.localFile)
-                if (success == null || success == false) {
-                    success = downloadFile(httpsUrl, file.localFile)
-                }
+                val success = downloadWithFallback(relativePath, file.localFile) == true
 
                 runOnUiThread {
                     downloadingFiles.remove(file)
-                    if (success == true && file.localFile.exists()) {
+                    if (success && file.localFile.exists()) {
                         downloadedFiles.add(0, file)
                         adapterDownloaded.notifyDataSetChanged()
                     } else {
-                        // ?? ??????? ?? ???? ??? ???? ????? ???? ?? ????? ????? ????
                         pendingFiles.add(file)
                         adapterPending.notifyDataSetChanged()
                     }
@@ -458,6 +470,23 @@ class DownloadActivity : FragmentActivity() {
                 }
             }
         }
+    }
+
+    /**
+     * تلاش برای دانلود از سرورها به‌ترتیب سرعت (سریع‌ترین اول).
+     * اگر یکی خطا داد، سرور بعدی امتحان می‌شود.
+     */
+    private fun downloadWithFallback(relativePath: String, dest: File): Boolean {
+        val servers = ServerSelector.rankedServers()
+        if (servers.isEmpty()) return false
+        for (s in servers) {
+            if (stopFlag.get()) return false
+            val ok = downloadFile(s.baseUrl + relativePath, dest)
+            if (ok == true && dest.exists() && dest.length() > 0) {
+                return true
+            }
+        }
+        return false
     }
 
     private fun downloadFile(urlString: String, destination: File): Boolean? {
@@ -494,8 +523,6 @@ class DownloadActivity : FragmentActivity() {
         btnDownloadAll.visibility = View.VISIBLE
         btnStop.visibility = View.GONE
         Toast.makeText(this, "Download stopped", Toast.LENGTH_SHORT).show()
-        // ???? ??? ??? ????? ?? ???? ?????? ?? ????? ?????? ???
-        // ????? ?? ?????? ??????? ??? ???? ????? ?????? ????? ???????
         adapterDownloaded.notifyDataSetChanged()
         adapterDownloading.notifyDataSetChanged()
         adapterPending.notifyDataSetChanged()
@@ -563,7 +590,6 @@ class DownloadActivity : FragmentActivity() {
             val file = files[position]
             holder.nameText.text = file.displayName
 
-            // ???? ??? ??????? ????? ?? ??? ???? ????? ??????
             (holder.iconText.tag as? ObjectAnimator)?.cancel()
             holder.iconText.rotation = 0f
 
@@ -603,14 +629,11 @@ class DownloadActivity : FragmentActivity() {
         private fun createItemBackground(): StateListDrawable {
             val stateList = StateListDrawable()
             val focused = GradientDrawable().apply {
-                shape = GradientDrawable.RECTANGLE
-                cornerRadius = 12f
-                setColor(Color.parseColor("#333333"))
-                setStroke(2, Color.RED)
+                shape = GradientDrawable.RECTANGLE; cornerRadius = 12f
+                setColor(Color.parseColor("#333333")); setStroke(2, Color.RED)
             }
             val normal = GradientDrawable().apply {
-                shape = GradientDrawable.RECTANGLE
-                cornerRadius = 12f
+                shape = GradientDrawable.RECTANGLE; cornerRadius = 12f
                 setColor(Color.TRANSPARENT)
             }
             stateList.addState(intArrayOf(android.R.attr.state_focused), focused)
