@@ -18,6 +18,7 @@ This project is based on the original **Arshad Quran TV** Android application. Q
 - Improved UI/UX for large TV screens
 - Additional translation server selection options
 - Better performance and stability
+- 210+ Quran Translations — The Widest Language Variety for Learn Quran
 
 ## Installation
 
