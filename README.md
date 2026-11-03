@@ -49,6 +49,7 @@ Download the APK from the [Releases](../../releases) page and install it on your
 
 - [quran2.1fe.ir](https://quran2.1fe.ir/)
 - [source forge](https://sourceforge.net/projects/quran-786-tv-quran-android-tv/)
+- [cafe bazaar store](https://cafebazaar.ir/app/ir.fena.qurantv786_tv?l=en)
 
 
 ## License
