@@ -79,4 +79,14 @@ If you find **Quran 786 TV** useful, please help us publish it on **Google Play*
 
 ---
 
+## ✨ Features
+
+- 🌍 **Multi-language support**
+- 🎙️ **4 Reciters**
+- 📖 **4 Recitations**
+- 🆓 **100% Free**
+- 🚫 **No Ads**
+- 📺 **Designed for Android TV**
+- 🎬 **Multimedia Quran player**
+
 If you find this project useful, please give it a star!
