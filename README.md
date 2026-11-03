@@ -42,8 +42,10 @@ Download the APK from the [Releases](../../releases) page and install it on your
 
 ## Download
 
-- [Cafe Bazaar](https://cafebazaar.ir/app/ir.fena.arshadqurantv_arshad_quran_tv)
-- [Myket](https://myket.ir/app/ir.fena.arshadqurantv_arshad_quran_tv)
+- [Cafe Bazaar English](https://cafebazaar.ir/app/ir.fena.qurantv786_tv?l=en)
+- [Cafe Bazaar Persian](https://cafebazaar.ir/app/ir.fena.arshadqurantv_arshad_quran_tv)
+
+
 
 ## Website
 
