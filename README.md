@@ -14,7 +14,7 @@
 
 This project is based on the original **Arshad Quran TV** Android application. Quran786TV adds:
 
-- Extended translation support for **210+ languages** via [Google Translate](https://translate.google.com/)
+- Extended translation support for [**210+ languages** ](https://support.google.com/translate/thread/176587051/list-of-supported-languages-for-google-translate-s-website-translator?hl=en) via [Google Translate](https://translate.google.com/)
 - Improved UI/UX for large TV screens
 - Additional translation server selection options
 - Better performance and stability
