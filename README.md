@@ -75,7 +75,7 @@ If you find **Quran 786 TV** useful, please help us publish it on **Google Play*
 
 ---
 
-## ❤️🌙 Thank You for Supporting Quran 786 Android TV
+### ❤️🌙 Thank You for Supporting Quran 786 Android TV
 
 ---
 
