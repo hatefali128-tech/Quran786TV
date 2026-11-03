@@ -65,6 +65,18 @@ If you have any questions about this Privacy Policy, please contact us at:
 
 [alefsoft@protonmail.com]
 
+# 🚀📲 Please Publish This App on Google Play
+
+### 🙏 We need your support!
+
+If you find **Quran 786 TV** useful, please help us publish it on **Google Play** so more people can benefit from it.
+
+### ⭐ Your support helps us reach more users and keep the app free — with no ads.
+
+---
+
+# ❤️🌙 Thank You for Supporting Quran 786 TV
+
 ---
 
 If you find this project useful, please give it a star!
