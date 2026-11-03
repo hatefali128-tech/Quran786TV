@@ -1,4 +1,4 @@
-# Quran 786 TV - Multi-language - free multimedia Quran player for Android TV
+# Quran 786 TV — Multi-language Quran Player for [Android TV](https://www.android.com/tv/) | 4 Reciters, 4 Recitations, 100% Free, No Ads
 
 **Quran786TV** is a fork of [Arshad Quran TV](https://github.com/hatefali128-tech/Arshad_Quran_Android_TV), rebuilt and enhanced for Android TV.
 
